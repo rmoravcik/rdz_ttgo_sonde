@@ -44,6 +44,7 @@ extern const char *RXstr[];
 #define ACT_DISPLAY_DEFAULT 63
 #define ACT_DISPLAY_SPECTRUM 62
 #define ACT_DISPLAY_WIFI 61
+#define ACT_SLEEP_MODE 60
 #define ACT_NEXTSONDE 65
 #define ACT_PREVSONDE 66
 #define ACT_ADDFREQ(n) ((n)+64)

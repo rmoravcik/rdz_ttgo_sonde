@@ -633,6 +633,9 @@ uint8_t Sonde::updateState(uint8_t event) {
 		// main loop will call setMode() and disable sx1278 background task
 		return event;
 	}
+	if (event==ACT_SLEEP_MODE) {
+		return event;
+	}
 	int n = event;
 	if(event==ACT_DISPLAY_DEFAULT) {
 		n = config.display[1];

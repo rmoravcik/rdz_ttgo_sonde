@@ -102,7 +102,7 @@ int16_t searchTimeouts[] = { -1, 0, 0 };
 uint8_t searchActions[] = {
 	ACT_NONE,
 	ACT_DISPLAY_DEFAULT, ACT_NONE, ACT_DISPLAY_SPECTRUM, ACT_DISPLAY_WIFI,
-	ACT_NONE, ACT_NONE, ACT_NONE, ACT_NONE,
+	ACT_NONE, ACT_NONE, ACT_SLEEP_MODE, ACT_NONE,
 	ACT_NONE, ACT_DISPLAY_DEFAULT, ACT_NEXTSONDE};
 DispEntry legacyLayout[] = {
 	{0, 5, FONT_SMALL, -1, 0xFFFF, 0, disp.drawFreq, " MHz"},
@@ -123,7 +123,7 @@ int16_t legacyTimeouts[] = { -1, -1, 20000 };
 uint8_t legacyActions[] = {
 	ACT_NONE,
 	ACT_NEXTSONDE, ACT_DISPLAY(0), ACT_DISPLAY_SPECTRUM, ACT_DISPLAY_WIFI,
-	ACT_DISPLAY(2), ACT_NONE, ACT_NONE, ACT_NONE,
+	ACT_DISPLAY(2), ACT_NONE, ACT_SLEEP_MODE, ACT_NONE,
 	ACT_NONE, ACT_NONE, ACT_DISPLAY(0)};
 DispEntry fieldLayout[] = {
 	{2, 0, FONT_LARGE, -1, 0xFFFF, 0, disp.drawLat, NULL},
@@ -139,7 +139,7 @@ int16_t fieldTimeouts[] = { -1, -1, -1 };
 uint8_t fieldActions[] = {
 	ACT_NONE,
 	ACT_NEXTSONDE, ACT_DISPLAY(0), ACT_DISPLAY_SPECTRUM, ACT_DISPLAY_WIFI,
-	ACT_DISPLAY(4), ACT_NONE, ACT_NONE, ACT_NONE,
+	ACT_DISPLAY(4), ACT_NONE, ACT_SLEEP_MODE, ACT_NONE,
 	ACT_NONE, ACT_NONE, ACT_NONE};
 DispEntry field2Layout[] = {
 	{2, 0, FONT_LARGE, -1, 0xFFFF, 0, disp.drawLat, NULL},
@@ -156,7 +156,7 @@ DispEntry field2Layout[] = {
 uint8_t field2Actions[] = {
 	ACT_NONE,
 	ACT_NEXTSONDE, ACT_DISPLAY(0), ACT_DISPLAY_SPECTRUM, ACT_DISPLAY_WIFI,
-	ACT_DISPLAY(1), ACT_NONE, ACT_NONE, ACT_NONE,
+	ACT_DISPLAY(1), ACT_NONE, ACT_SLEEP_MODE, ACT_NONE,
 	ACT_NONE, ACT_NONE, ACT_NONE};
 DispEntry gpsLayout[] = {
 	{0, 0, FONT_LARGE, -1, 0xFFFF, 0, disp.drawID, NULL},
@@ -173,7 +173,7 @@ DispEntry gpsLayout[] = {
 uint8_t gpsActions[] = {
 	ACT_NONE,
 	ACT_NEXTSONDE, ACT_DISPLAY(0), ACT_DISPLAY_SPECTRUM, ACT_DISPLAY_WIFI,
-	ACT_DISPLAY(1), ACT_NONE, ACT_NONE, ACT_NONE,
+	ACT_DISPLAY(1), ACT_NONE, ACT_SLEEP_MODE, ACT_NONE,
 	ACT_NONE, ACT_NONE, ACT_NONE};
 
 DispInfo staticLayouts[5] = {
@@ -813,12 +813,14 @@ static uint8_t ACTION(char c) {
 		return ACT_NONE;
 	case '>':
 		return ACT_DISPLAY_NEXT;
+	case 'S':
+		return ACT_SLEEP_MODE;
 	default:
 		if(c>='0'&&c<='9')
 			return ACT_DISPLAY(c-'0');
 		// Hack, will change later to better syntax
 		if(c>='a'&&c<='z')
-			return ACT_ADDFREQ(c-'a'+2);
+			return ACT_ADDFREQ(c-'a'+4);
 	}
 	return ACT_NONE;
 }

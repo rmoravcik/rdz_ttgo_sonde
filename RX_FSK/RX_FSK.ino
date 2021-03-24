@@ -25,7 +25,7 @@
 //#define ESP_MEM_DEBUG 1
 int e;
 
-enum MainState { ST_DECODER, ST_SPECTRUM, ST_WIFISCAN, ST_UPDATE, ST_TOUCHCALIB };
+enum MainState { ST_DECODER, ST_SPECTRUM, ST_WIFISCAN, ST_UPDATE, ST_TOUCHCALIB, ST_SLEEPMODE };
 static MainState mainState = ST_WIFISCAN; // ST_WIFISCAN;
 
 AsyncWebServer server(80);
@@ -1768,6 +1768,7 @@ static const char *action2text(uint8_t action) {
   if (action == ACT_DISPLAY_WIFI) return "Wifi Scan Display";
   if (action == ACT_NEXTSONDE) return "Go to next sonde";
   if (action == ACT_PREVSONDE) return "presonde (not implemented)";
+  if (action == ACT_SLEEP_MODE) return "Entering sleep mode";
   if (action == ACT_NONE) return "none";
   if (action >= 128) {
     snprintf(text, 40, "Sonde=%d", action & 127);
@@ -1837,6 +1838,10 @@ void loopDecoder() {
       }
       else if (action == ACT_DISPLAY_WIFI) {
         enterMode(ST_WIFISCAN);
+        return;
+      }
+      else if (action == ACT_SLEEP_MODE) {
+        enterMode(ST_SLEEPMODE);
         return;
       }
       // no... we are already in DECODER mode, so no need to do anything!?
@@ -2030,6 +2035,13 @@ void loopSpectrum() {
     case KP_DOUBLE:
       setCurrentDisplay(0);
       enterMode(ST_DECODER);
+      return;
+    default: break;
+  }
+
+  switch (getKey2Press()) {
+    case KP_MID:
+      enterMode(ST_SLEEPMODE);
       return;
     default: break;
   }
@@ -2628,7 +2640,48 @@ void execOTA() {
   enterMode(ST_DECODER);
 }
 
+void enterSleepMode() {
+    if (axp192_found) {
+        int ret;
+        // PEK or GPIO edge wake-up function enable setting in Sleep mode
+        do {
+            // In order to ensure that it is set correctly,
+            // the loop waits for it to return the correct return value
+            Serial.println("Set PMU in sleep mode");
+            ret = axp.setSleep();
+            delay(500);
+        } while (ret != AXP_PASS);
 
+        // Turn off all power channels, only use PEK or AXP GPIO to wake up
+
+        // After setting AXP202/AXP192 to sleep,
+        // it will start to record the status of the power channel that was turned off after setting,
+        // it will restore the previously set state after PEK button or GPIO wake up
+
+        // Turn off all AXP192 power channels
+        ret = axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF);
+        Serial.printf("Set Power AXP192_LDO2:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
+
+        ret = axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF);
+        Serial.printf("Set Power AXP192_LDO3:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
+
+        ret = axp.setPowerOutPut(AXP192_DCDC1, AXP202_OFF);
+        Serial.printf("Set Power AXP192_DCDC1:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
+
+        ret = axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF);
+        Serial.printf("Set Power AXP192_DCDC2:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
+
+        ret = axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
+        Serial.printf("Set Power AXP192_EXTEN:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
+
+        Serial.flush();
+        delay(1000);
+
+        // Tbeam v1.0 uses DC3 as the MCU power channel, turning it off as the last
+        ret = axp.setPowerOutPut(AXP192_DCDC3, AXP202_OFF);
+        Serial.printf("Set Power AXP192_DCDC3:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
+    }
+}
 
 
 void loop() {
@@ -2646,6 +2699,7 @@ void loop() {
     case ST_WIFISCAN: loopWifiScan(); break;
     case ST_UPDATE: execOTA(); break;
     case ST_TOUCHCALIB: loopTouchCalib(); break;
+    case ST_SLEEPMODE: enterSleepMode(); break;
   }
 #if 0
   int rssi = sx1278.getRSSI();
