@@ -1312,7 +1312,7 @@ void unkHandler(T nmea) {
   }
 }
 
-//#define DEBUG_GPS
+#define DEBUG_GPS
 static bool gpsCourseOld;
 static int lastCourse;
 void gpsTask(void *parameter) {
@@ -1343,7 +1343,7 @@ void gpsTask(void *parameter) {
         }
 #ifdef DEBUG_GPS
         uint8_t hdop = nmea.getHDOP();
-        Serial.printf(" =>: valid: %d  N %f  E %f  alt %d  course:%d dop:%d\n", gpsPos.valid ? 1 : 0, gpsPos.lat, gpsPos.lon, gpsPos.alt, gpsPos.course, hdop);
+        Serial.printf(" =>: valid: %d  N %f  E %f  alt %d  course:%d dop:%d sat:%d\n", gpsPos.valid ? 1 : 0, gpsPos.lat, gpsPos.lon, gpsPos.alt, gpsPos.course, hdop, nmea.getNumSatellites());
 #endif
       }
     }
