@@ -643,6 +643,73 @@ float GetRAHumidity( uint32_t humCurrent, uint32_t humMin, uint32_t humMax, floa
    return RH;
 }
 
+// taken from https://github.com/einergehtnochrein/ra-firmware
+float GetRATempPress( int16_t tempPress ) {
+   return tempPress / 100.0;
+}
+
+// taken from https://github.com/einergehtnochrein/ra-firmware
+float GetRAPressure( uint32_t pressCurrent, uint32_t pressMin, uint32_t pressMax, float tempPressSensor, float matrixP[18] ) {
+   float pressure = -1.0;
+
+   float current = float(pressCurrent - pressMin) / float(pressMax - pressMin);
+
+   /* If there's no pressure sensor, don't try any caclulation */
+   if (current != 0) {
+      /* Determine coefficients of polynomial */
+      float r = tempPressSensor;
+
+      float w[6];
+      w[0] = matrixP[0]
+           + matrixP[7]  * r
+           + matrixP[11] * r * r
+           + matrixP[15] * r * r * r;
+      w[1] = matrixP[1]
+           + matrixP[8]  * r
+           + matrixP[12] * r * r
+           + matrixP[16] * r * r * r;
+      w[2] = matrixP[2]
+           + matrixP[9]  * r
+           + matrixP[13] * r * r
+           + matrixP[17] * r * r * r;    // NOTE: SM uses matrixP[13] here again!
+      w[3] = matrixP[3]
+           + matrixP[10] * r
+           + matrixP[14] * r * r;
+      w[4] = matrixP[4];
+      w[5] = matrixP[5];
+
+      /* Compute pressure in hPa */
+      float x = matrixP[6] / current;
+      pressure = 0
+               + w[0]
+               + w[1] * x
+               + w[2] * x * x
+               + w[3] * x * x * x
+               + w[4] * x * x * x * x
+               + w[5] * x * x * x * x * x;
+   }
+
+   return pressure;
+}
+
+// taken from https://github.com/einergehtnochrein/ra-firmware
+float GetRAAltitude( float pressure ) {
+   float altitude = -1.0;
+
+   /* Altitude from pressure */
+   if (pressure > 226.32f) {
+      altitude = 44330.8f * (1.0f - expf(0.190263f * logf(pressure / 1013.25f)));
+   }
+   else if (pressure > 54.749f) {
+      altitude = 11000.0f - 6341.624f * logf(pressure / 226.32f);
+   }
+   else {
+      altitude = 20000.0f + 216650.0f * (expf(-0.0292173f * logf(pressure / 54.749f)) - 1.0f);
+   }
+
+   return altitude;
+}
+
 // returns: 0: ok, -1: rs or crc error
 int RS41::decode41(byte *data, int maxlen)
 {
@@ -761,6 +828,7 @@ int RS41::decode41(byte *data, int maxlen)
 			   uint32_t pressureMain = getint24(data, 560, p+27);
 			   uint32_t pressureRef1 = getint24(data, 560, p+30);
 			   uint32_t pressureRef2 = getint24(data, 560, p+33);
+			   int16_t tempPressSensor = getint16(data, 560, p+38);
             #if 0
                Serial.printf( "External temp: tempMeasMain = %ld, tempMeasRef1 = %ld, tempMeasRef2 = %ld\n", tempMeasMain, tempMeasRef1, tempMeasRef2 );
                Serial.printf( "Rel  Humidity: humidityMain = %ld, humidityRef1 = %ld, humidityRef2 = %ld\n", humidityMain, humidityRef1, humidityRef2 );
@@ -782,6 +850,7 @@ int RS41::decode41(byte *data, int maxlen)
 	    // check for bits 3, 4, 5, 6, and 7 set
 	    bool validExternalTemperature = calibration!=NULL && (calibration->valid & 0xF8) == 0xF8;
 	    bool validHumidity = calibration!=NULL && (calibration->valid & 0x7FF8) == 0x7FF8;
+	    bool validPressure = calibration!=NULL && (calibration->valid & 0x000007E000000000ll) == 0x000007E000000000ll;
 #endif
 
             if ( validExternalTemperature ) {
@@ -796,6 +865,15 @@ int RS41::decode41(byte *data, int maxlen)
                Serial.printf("Humidity Sensor temperature = %f\n", sonde.si()->tempRHSensor );
                sonde.si()->relativeHumidity = GetRAHumidity( humidityMain, humidityRef1, humidityRef2, sonde.si()->tempRHSensor, sonde.si()->temperature );
                Serial.printf("Relative humidity = %f\n", sonde.si()->relativeHumidity );
+            }
+
+            if ( validPressure ) {
+               sonde.si()->tempPressSensor = GetRATempPress(tempPressSensor);
+               Serial.printf("Pressure Sensor temperature = %f\n", sonde.si()->tempPressSensor );
+               sonde.si()->pressure = GetRAPressure( pressureMain, pressureRef1, pressureRef2, sonde.si()->tempPressSensor, calibration->value.matrixP );
+               Serial.printf("Atmospheric pressure = %f\n", sonde.si()->pressure );
+               sonde.si()->pressure = GetRAAltitude( sonde.si()->pressure );
+               Serial.printf("Altitude from Pressure = %f\n", sonde.si()->pressureAltitude );
             }
          }
          break;
