@@ -117,7 +117,7 @@ timeaction=#,D,+
 0,0=XScan
 0,5=S#:
 0,9,4.5=T
-6,0=XHoehe 
+6,0=XAlt. 
 6,5=GH
 color=ffff00
 2,0=F MHz
@@ -141,11 +141,13 @@ color=00ff00,444444
 @LegacyPortrait
 timer=-1,-1,N
 key1action=+,0,F,W
-key2action=>,#,#,#
+key2action=>,#,S,#
 timeaction=#,#,0
 9,10=f
 9,0=r
 9,4=Q
+10,0=mT°C
+10,4=mH%
 5,0=g0NCS,35,ffff00,000044,6,33ff33,5,eeaa00
 5,7=g0CCS,35,ffff00,000044,6,55ff55,5,eeaa00
 0,0=s
@@ -165,7 +167,7 @@ color=FFFFFF
 @PeilungTFTPortrait
 timer=-1,-1,N
 key1action=+,0,F,W
-key2action=>,#,#,#
+key2action=>,#,S,#
 timeaction=#,#,#
 color=ffff00,000033
 color=bbbbbb,000000
@@ -186,7 +188,7 @@ color=ffffff,000000
 @GPSdataTFTPortrait
 timer=-1,-1,N
 key1action=+,0,F,W
-key2action=>,#,#,#
+key2action=>,#,S,#
 timeaction=#,#,#
 0,0=xOn-board GPS:
 1,0,8=gA
@@ -202,7 +204,7 @@ timeaction=#,#,#
 @BatteryTFTPortrait
 timer=-1,-1,-1
 key1action=+,0,F,W
-key2action=>,#,#,#
+key2action=>,#,S,#
 timeaction=#,#,#
 0,0=xBattery status:
 0,14=bS
@@ -215,4 +217,5 @@ timeaction=#,#,#
 5.4,0,10=bImA
 6.4,0=xTemp:
 6.4,5,5=bT C
+
 

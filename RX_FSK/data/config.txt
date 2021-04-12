@@ -5,9 +5,9 @@
 #button_pin=130
 #button2_pin=142
 # No specification in config file: try autodetection (gpio4 pin level at startup)
-#button_pin=0
-#button2_pin=255
-#button2_axp=0
+button_pin=38
+button2_pin=143
+button2_axp=1
 # LED port
 #led_pout=-1
 # OLED Setup is depending on hardware of LoRa board
@@ -18,16 +18,17 @@
 # No specification in config file: try autodetection (gpio4 pin level at startup)
 #
 # disptype: 0=OLED, 1=ILI9225
-#disptype=0
-#oled_sda=21
-#oled_scl=22
-#oled_rst=16
-#tft_rs=2
-#tft_cs=0
-tft_orient=1
-#tft_modeflip=0
-#gps_rxd=-1
-#gps_txd=-1
+disptype=1
+oled_sda=4
+oled_scl=13
+oled_rst=14
+tft_rs=2
+tft_cs=0
+tft_orient=2
+tft_modeflip=0
+gps_rxd=34
+gps_txd=12
+power_pout=-1
 # Show AFC value (for RS41 and M10/M20, maybe also DFM, but not useful for RS92)
 showafc=1
 # Frequency correction, in Hz
@@ -44,7 +45,7 @@ kisstnc.active = 1
 
 # which screens file to use (0: screens.txt, i>0: screens${i}.txt
 # 0: old version; 1: for OLED, 2: for TFT; 3: for TFT (portrait mode)
-# screenfile=2
+screenfile=3
 # display configuration. List of "displays"
 # first entry: "Scanner" display
 # second entry: default "Receiver" display
@@ -63,7 +64,7 @@ marker=1
 #-------------------------------#
 # APRS settings
 #-------------------------------#
-call=N0CALL
+call=OK8RM
 passcode=12345
 #-------------------------------#
 # Sonde specific settings: bandwidth
@@ -78,6 +79,8 @@ rs92.rxbw=12500
 rs92.alt2d=480
 dfm.agcbw=20800
 dfm.rxbw=10400
+m10m20.agcbw=20800
+m10m20.rxbw=12500
 #-------------------------------#
 # ftp server for RINEX data (for RS92)
 # YYYY/DDD/brdcDDD0.YYn.gz is appended
@@ -119,5 +122,11 @@ mqtt.username=
 mqtt.password=
 mqtt.prefix=rdz_sonde_server/
 #-------------------------------#
+showafc=1
+freqofs=0
+norx_timeout=20
+touch_thresh=70
+mdnsname=rdzsonde
 # EOF
 #-------------------------------#
+
