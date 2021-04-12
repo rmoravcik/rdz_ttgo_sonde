@@ -182,6 +182,7 @@ public:
 	static void drawGPS(DispEntry *de);
 	static void drawText(DispEntry *de);
 	static void drawBatt(DispEntry *de);
+	static void drawMetrology(DispEntry *de);
 	static void drawString(DispEntry *de, const char *str);
 	void clearIP();
 	void setIP(const char *ip, bool AP);

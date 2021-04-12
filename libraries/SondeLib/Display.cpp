@@ -794,6 +794,10 @@ void Display::parseDispElement(char *text, DispEntry *de)
 		de->func = disp.drawBatt;
 		de->extra = strdup(text+1);
 		break;
+	case 'm':
+		de->func = disp.drawMetrology;
+		de->extra = strdup(text+1);
+		break;
 	default:
 		Serial.printf("Unknown element: %c\n", type);
 		break;
@@ -1489,6 +1493,22 @@ void Display::drawBatt(DispEntry *de) {
 	xSemaphoreGive( axpSemaphore );
         rdis->setFont(de->fmt);
 	drawString(de, buf);
+}
+
+void Display::drawMetrology(DispEntry *de) {
+	rdis->setFont(de->fmt);
+	switch(de->extra[0]) {
+	case 'T':
+		snprintf(buf, 8, "%4dC", (int)sonde.si()->temperature);
+		drawString(de, buf);
+		break;
+	case 'H':
+		snprintf(buf, 8, "%4d%%", (int)sonde.si()->relativeHumidity);
+		drawString(de, buf);
+		break;
+	default:
+		break;
+	}
 }
 
 void Display::drawText(DispEntry *de) {
