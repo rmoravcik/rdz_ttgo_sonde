@@ -450,7 +450,7 @@ void addSondeStatus(char *ptr, int i)
   if (s->type == STYPE_RS41) {
     sprintf(ptr + strlen(ptr), "<tr><td>Telemetry: Temperature=%.1f°C Humidity=%.1f%% Pressure=%.1fhPa</td></tr>\n",
             s->temperature, s->relativeHumidity, s->pressure);
-    sprintf(ptr + strlen(ptr), "<tr><td>Burst-KT=%d Launch-KT=%d Countdown=%d (vor %ds)</td></tr>\n",
+    sprintf(ptr + strlen(ptr), "<tr><td>Burst-KT=%d Launch-KT=%d Countdown=%d (%ds ago)</td></tr>\n",
             s->burstKT, s->launchKT, s->countKT, ((uint16_t)s->frame - s->crefKT));
   }
   sprintf(ptr + strlen(ptr), "<tr><td><a target=\"_empty\" href=\"geo:%.6f,%.6f\">GEO-App</a> - ", s->lat, s->lon);

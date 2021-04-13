@@ -124,7 +124,7 @@ color=ffff00
 4,0=S
 color=00ff00,444444
 7,5=n
-7,0=bV
+7,0=bVV
 
 ############
 # Default configuration for "Legacy" display:
@@ -146,10 +146,8 @@ timeaction=#,#,0
 9,10=f
 9,0=r
 9,4=Q
-10,0=mT°C
-10,4=mH%
 5,0=g0NCS,35,ffff00,000044,6,33ff33,5,eeaa00
-5,7=g0CCS,35,ffff00,000044,6,55ff55,5,eeaa00
+# 5,7=g0CCS,35,ffff00,000044,6,55ff55,5,eeaa00
 0,0=s
 0,9=is
 2,0=L
@@ -162,6 +160,8 @@ color=FFFFFF
 4,9=GH
 3,9=V
 4,0=A
+5,9=MTC
+6,9=MH%
 
 ############
 @PeilungTFTPortrait

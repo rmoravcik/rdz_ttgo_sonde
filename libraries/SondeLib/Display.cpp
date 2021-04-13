@@ -1485,7 +1485,7 @@ void Display::drawBatt(DispEntry *de) {
 		break;
 	case 'T':
 		val = axp.getTemp()-144.7;  // WTF... library returns temperatur in K above -144.7°C!??
-		snprintf(buf, 30, "%.2f%s", val, de->extra+1);
+		snprintf(buf, 30, "%.2f%c%s", val, 127, de->extra+1);
 		break;
 	default:
 		*buf=0;
@@ -1499,11 +1499,12 @@ void Display::drawMetrology(DispEntry *de) {
 	rdis->setFont(de->fmt);
 	switch(de->extra[0]) {
 	case 'T':
-		snprintf(buf, 8, "%4dC", (int)sonde.si()->temperature);
+		snprintf(buf, 8, "%3d%c%s", (int)sonde.si()->temperature, 127, de->extra+1);
 		drawString(de, buf);
+		rdis->drawTile(de->x+4, de->y, 1, deg_tile);
 		break;
 	case 'H':
-		snprintf(buf, 8, "%4d%%", (int)sonde.si()->relativeHumidity);
+		snprintf(buf, 8, "%5d%s", (int)sonde.si()->relativeHumidity, de->extra+1);
 		drawString(de, buf);
 		break;
 	default:
