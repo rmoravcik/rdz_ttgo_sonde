@@ -6,6 +6,7 @@
 #include "RS92.h"
 #include "DFM.h"
 #include "M10M20.h"
+#include "MP3H.h"
 #include "SX1278FSK.h"
 #include "Display.h"
 #include <Wire.h>
@@ -18,6 +19,9 @@ const char *evstring[]={"NONE", "KEY1S", "KEY1D", "KEY1M", "KEY1L", "KEY2S", "KE
                                "VIEWTO", "RXTO", "NORXTO", "(max)"};
 
 const char *RXstr[]={"RX_OK", "RX_TIMEOUT", "RX_ERROR", "RX_UNKNOWN"};
+
+// Dependency to enum SondeType
+const char *manufacturer_string[]={"Graw", "Graw", "Vaisala", "Vaisala", "Meteomodem", "Meteomodem", "Graw", "???"};
 
 int fingerprintValue[]={ 17, 31, 64, 4, 55, 48, 23, 128+23, 119, 128+119, -1 };
 const char *fingerprintText[]={
@@ -191,6 +195,8 @@ void Sonde::defaultConfig() {
 	config.dfm.rxbw=10400;
 	config.m10m20.agcbw=20800;
 	config.m10m20.rxbw=12500;
+	config.mp3h.agcbw=12500;
+	config.mp3h.rxbw=12500;
 	config.udpfeed.active = 1;
 	config.udpfeed.type = 0;
 	strcpy(config.udpfeed.host, "192.168.42.20");
@@ -311,6 +317,10 @@ void Sonde::setConfig(const char *cfg) {
 		config.m10m20.agcbw = atoi(val);
 	} else if(strcmp(cfg,"m10m20.rxbw")==0) {
 		config.m10m20.rxbw = atoi(val);
+	} else if(strcmp(cfg,"mp3h.agcbw")==0) {
+		config.mp3h.agcbw = atoi(val);
+	} else if(strcmp(cfg,"mp3h.rxbw")==0) {
+		config.mp3h.rxbw = atoi(val);
 	} else if(strcmp(cfg,"dfm.agcbw")==0) {
 		config.dfm.agcbw = atoi(val);
 	} else if(strcmp(cfg,"dfm.rxbw")==0) {
@@ -364,7 +374,22 @@ void Sonde::setConfig(const char *cfg) {
 		strncpy(config.mqtt.password, val, 63);
 	} else if(strcmp(cfg,"mqtt.prefix")==0) {
 		strncpy(config.mqtt.prefix, val, 63);
-
+	} else if(strcmp(cfg, "sondehub.active")==0) {
+		config.sondehub.active = atoi(val);
+	} else if(strcmp(cfg, "sondehub.host")==0) {
+		strncpy(config.sondehub.host, val, 63);
+	} else if(strcmp(cfg, "sondehub.callsign")==0) {
+		strncpy(config.sondehub.callsign, val, 63);
+	} else if(strcmp(cfg, "sondehub.lat")==0) {
+		strncpy(config.sondehub.lat, val, 19);
+	} else if(strcmp(cfg, "sondehub.lon")==0) {
+		strncpy(config.sondehub.lon, val, 19);
+	} else if(strcmp(cfg, "sondehub.alt")==0) {
+		strncpy(config.sondehub.alt, val, 19);
+	} else if(strcmp(cfg, "sondehub.antenna")==0) {
+		strncpy(config.sondehub.antenna, val, 63);
+	} else if(strcmp(cfg, "sondehub.email")==0) {
+		strncpy(config.sondehub.email, val, 63);
 	} else {
 		Serial.printf("Invalid config option '%s'=%s \n", cfg, val);
 	}
@@ -466,6 +491,9 @@ void Sonde::setup() {
 	case STYPE_M20:
 		m10m20.setup( sondeList[rxtask.currentSonde].freq * 1000000);
 		break;
+	case STYPE_MP3H:
+		mp3h.setup( sondeList[rxtask.currentSonde].freq * 1000000);
+		break;
 	}
 	// debug
 	int freq = (int)sx1278.getFrequency();
@@ -497,6 +525,9 @@ void Sonde::receive() {
 	case STYPE_DFM09_OLD:
 	case STYPE_DFM:
 		res = dfm.receive();
+		break;
+	case STYPE_MP3H:
+		res = mp3h.receive();
 		break;
 	}
 
@@ -594,6 +625,9 @@ rxloop:
 	case STYPE_DFM09_OLD:
 	case STYPE_DFM:
 		dfm.waitRXcomplete();
+		break;
+	case STYPE_MP3H:
+		mp3h.waitRXcomplete();
 		break;
 	}
 	memmove(sonde.si()->rxStat+1, sonde.si()->rxStat, 17);

@@ -116,17 +116,30 @@ tcp.idformat=0
 # data not sanitized / quality checked, outliers not filtered out
 mqtt.active=0
 mqtt.id=rdz_sonde_server
-mqtt.host=
+mqtt.ip=192.168.1.5
 mqtt.port=1883
 mqtt.username=
 mqtt.password=
 mqtt.prefix=rdz_sonde_server/
+#-------------------------------#
+# Sondehub v2 settings
+#-------------------------------#
+# Sondehub v2 DB settings
+sondehub.active=1
+sondehub.host=api.v2.sondehub.org
+sondehub.callsign=CHANGEME_RDZTTGO
+sondehub.lat=null
+sondehub.lon=null
+sondehub.alt=null
+sondehub.antenna=
+sondehub.email=
 #-------------------------------#
 showafc=1
 freqofs=0
 norx_timeout=20
 touch_thresh=70
 mdnsname=rdzsonde
+#-------------------------------#
 # EOF
 #-------------------------------#
 

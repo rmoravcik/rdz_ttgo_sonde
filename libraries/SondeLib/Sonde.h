@@ -54,11 +54,12 @@ extern const char *RXstr[];
 // 01000000 => goto sonde -1
 // 01000001 => goto sonde +1
 
-#define NSondeTypes 7
-enum SondeType { STYPE_DFM, STYPE_DFM09_OLD, STYPE_RS41, STYPE_RS92, STYPE_M10, STYPE_M20, STYPE_DFM06_OLD };
+#define NSondeTypes 8
+enum SondeType { STYPE_DFM, STYPE_DFM09_OLD, STYPE_RS41, STYPE_RS92, STYPE_M10, STYPE_M20, STYPE_DFM06_OLD, STYPE_MP3H };
 extern const char *sondeTypeStr[NSondeTypes];
 extern const char *sondeTypeLongStr[NSondeTypes];
 extern const char sondeTypeChar[NSondeTypes];
+extern const char *manufacturer_string[NSondeTypes];
 
 #define TYPE_IS_DFM(t) ( (t)==STYPE_DFM || (t)==STYPE_DFM09_OLD || (t)==STYPE_DFM06_OLD )
 #define TYPE_IS_METEO(t) ( (t)==STYPE_M10 || (t)==STYPE_M20 )
@@ -147,6 +148,10 @@ struct st_m10m20config {
 	int agcbw;
 	int rxbw;
 };
+struct st_mp3hconfig {
+	int agcbw;
+	int rxbw;
+};
 
 
 enum IDTYPE { ID_DFMDXL, ID_DFMGRAW, ID_DFMAUTO };
@@ -178,6 +183,17 @@ struct st_mqtt {
 	char username[64];
 	char password[64];
 	char prefix[64];
+};
+
+struct st_sondehub {
+	int active;
+	char host[64];
+	char callsign[64];
+	char lat[20];
+	char lon[20];
+	char alt[20];
+	char antenna[64];
+	char email[64];
 };
 
 typedef struct st_rdzconfig {
@@ -219,6 +235,7 @@ typedef struct st_rdzconfig {
 	struct st_rs92config rs92;
 	struct st_dfmconfig dfm;
 	struct st_m10m20config m10m20;
+	struct st_mp3hconfig mp3h;
 	char ephftp[40];
 	// data feed configuration
 	// for now, one feed for each type is enough, but might get extended to more?
@@ -228,6 +245,7 @@ typedef struct st_rdzconfig {
 	struct st_feedinfo tcpfeed;	// target for APRS-IS TCP connections
 	struct st_kisstnc kisstnc;	// target for KISS TNC (via TCP, mainly for APRSdroid)
 	struct st_mqtt mqtt;
+	struct st_sondehub sondehub;
 } RDZConfig;
 
 

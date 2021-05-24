@@ -1,5 +1,7 @@
 #include <axp20x.h>
 
+#include "features.h"
+
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <ESPAsyncWebServer.h>
@@ -11,7 +13,6 @@
 #include <ESPmDNS.h>
 #include <MicroNMEA.h>
 #include <Ticker.h>
-
 #include <SX1278FSK.h>
 #include <Sonde.h>
 #include <Display.h>
@@ -20,7 +21,9 @@
 #include "version.h"
 #include "geteph.h"
 #include "rs92gps.h"
+#if FEATURE_MQTT
 #include "mqtt.h"
+#endif
 #include "esp_heap_caps.h"
 //#define ESP_MEM_DEBUG 1
 int e;
@@ -47,6 +50,9 @@ String *updateBin = &updateBinM;
 boolean connected = false;
 WiFiUDP udp;
 WiFiClient client;
+#if FEATURE_SONDEHUB
+WiFiClient shclient;	// Sondehub v2
+#endif
 
 // KISS over TCP for communicating with APRSdroid
 WiFiServer tncserver(14580);
@@ -55,10 +61,11 @@ WiFiClient tncclient;
 WiFiServer rdzserver(14570);
 WiFiClient rdzclient;
 
+#if FEATURE_MQTT
 unsigned long lastMqttUptime = 0;
 boolean mqttEnabled;
 MQTT mqttclient;
-
+#endif
 boolean forceReloadScreenConfig = false;
 
 enum KeyPress { KP_NONE = 0, KP_SHORT, KP_DOUBLE, KP_MID, KP_LONG };
@@ -198,6 +205,9 @@ void setupChannelList() {
     }
     else if (space[1] == '2') {
       type = STYPE_M20;
+    }
+    else if (space[1] == '3') {
+      type = STYPE_MP3H;
     }
     else continue;
     int active = space[3] == '+' ? 1 : 0;
@@ -439,7 +449,7 @@ void addSondeStatus(char *ptr, int i)
   strcat(ptr, "<table>");
   sprintf(ptr + strlen(ptr), "<tr><td id=\"sfreq\">%3.3f MHz, Type: %s</td><tr><td>ID: %s", s->freq, sondeTypeLongStr[s->type],
           s->validID ? s->id : "<?""?>");
-  if (s->validID && (TYPE_IS_DFM(s->type) || TYPE_IS_METEO(s->type)) ) {
+  if (s->validID && (TYPE_IS_DFM(s->type) || TYPE_IS_METEO(s->type) || s->type == STYPE_MP3H) ) {
     sprintf(ptr + strlen(ptr), " (ser: %s)", s->ser);
   }
   sprintf(ptr + strlen(ptr), "</td></tr><tr><td>QTH: %.6f,%.6f h=%.0fm</td></tr>\n", s->lat, s->lon, s->alt);
@@ -456,6 +466,7 @@ void addSondeStatus(char *ptr, int i)
   sprintf(ptr + strlen(ptr), "<tr><td><a target=\"_empty\" href=\"geo:%.6f,%.6f\">GEO-App</a> - ", s->lat, s->lon);
   sprintf(ptr + strlen(ptr), "<a target=\"_empty\" href=\"https://wetterson.de/karte/?%s\">wetterson.de</a> - ", s->id);
   sprintf(ptr + strlen(ptr), "<a target=\"_empty\" href=\"https://radiosondy.info/sonde_archive.php?sondenumber=%s\">radiosondy.info</a> - ", s->id);
+  sprintf(ptr + strlen(ptr), "<a target=\"_empty\" href=\"https://tracker.sondehub.org/%s\">SondeHub Tracker</a> - ", s->id);
   sprintf(ptr + strlen(ptr), "<a target=\"_empty\" href=\"https://www.openstreetmap.org/?mlat=%.6f&mlon=%.6f&zoom=14\">OSM</a> - ", s->lat, s->lon);
   sprintf(ptr + strlen(ptr), "<a target=\"_empty\" href=\"https://www.google.com/maps/search/?api=1&query=%.6f,%.6f\">Google</a></td></tr>", s->lat, s->lon);
 
@@ -527,6 +538,8 @@ struct st_configitems config_list[] = {
   {"dfm.rxbw", "DFM RX bandwidth", 0, &sonde.config.dfm.rxbw},
   {"m10m20.agcbw", "M10/M20 AGC bandwidth", 0, &sonde.config.m10m20.agcbw},
   {"m10m20.rxbw", "M10/M20 RX bandwidth", 0, &sonde.config.m10m20.rxbw},
+  {"mp3h.agcbw", "MP3H AGC bandwidth", 0, &sonde.config.mp3h.agcbw},
+  {"mp3h.rxbw", "MP3H RX bandwidth", 0, &sonde.config.mp3h.rxbw},
   {"ephftp", "FTP for eph (RS92)", 39, &sonde.config.ephftp},
   {"", "Data feed configuration", -5, NULL},
   /* APRS settings */
@@ -548,6 +561,7 @@ struct st_configitems config_list[] = {
   {"tcp.idformat", "DFM ID Format", -2, &sonde.config.tcpfeed.idformat},
   {"tcp.highrate", "Rate limit", 0, &sonde.config.tcpfeed.highrate},
 
+#if FEATURE_MQTT
   /* MQTT */
   {"mqtt.active", "MQTT Active (needs reboot)", 0, &sonde.config.mqtt.active},
   {"mqtt.id", "MQTT client ID", 63, &sonde.config.mqtt.id},
@@ -556,6 +570,7 @@ struct st_configitems config_list[] = {
   {"mqtt.username", "MQTT Username", 63, &sonde.config.mqtt.username},
   {"mqtt.password", "MQTT Password", 63, &sonde.config.mqtt.password},
   {"mqtt.prefix", "MQTT Prefix", 63, &sonde.config.mqtt.prefix},
+#endif
 
   /* Hardware dependeing settings */
   {"", "Hardware configuration (requires reboot)", -5, NULL},
@@ -578,6 +593,18 @@ struct st_configitems config_list[] = {
   {"gps_txd", "GPS TXD pin (not really needed)", 0, &sonde.config.gps_txd},
   {"mdnsname", "mDNS name", 14, &sonde.config.mdnsname},
 
+#if FEATURE_SONDEHUB
+  /* Sondehub v2 settings */
+  {"", "Sondehub v2 settings", -5, NULL},
+  {"sondehub.active", "Sondehub reporting active", 0, &sonde.config.sondehub.active},
+  {"sondehub.host", "Sondehub host", 63, &sonde.config.sondehub.host},
+  {"sondehub.callsign", "Callsign", 63, &sonde.config.sondehub.callsign},
+  {"sondehub.lat", "Latitude", 19, &sonde.config.sondehub.lat},
+  {"sondehub.lon", "Longitude", 19, &sonde.config.sondehub.lon},
+  {"sondehub.alt", "Altitude", 19, &sonde.config.sondehub.alt},
+  {"sondehub.antenna", "Antenna", 63, &sonde.config.sondehub.antenna},
+  {"sondehub.email", "Sondehub email", 63, &sonde.config.sondehub.email},
+#endif
 };
 const static int N_CONFIG = (sizeof(config_list) / sizeof(struct st_configitems));
 
@@ -977,9 +1004,9 @@ void addSondeStatusKML(char *ptr, int i)
   }
 
   sprintf(ptr + strlen(ptr), "<Placemark id=\"%s\"><name>%s</name><Point><coordinates>%.6f,%.6f,%.0f</coordinates></Point><description>%3.3f MHz, Type: %s, h=%.0fm</description></Placemark>",
-    s->id, s->id,
-    s->lon, s->lat, s->alt,
-    s->freq, sondeTypeStr[s->type], s->alt);
+          s->id, s->id,
+          s->lon, s->lat, s->alt,
+          s->freq, sondeTypeStr[s->type], s->alt);
 }
 
 const char *createKMLDynamic() {
@@ -1032,8 +1059,10 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
   if (type == WS_EVT_CONNECT) {
     Serial.println("Websocket client connection received");
     client->text("Hello from ESP32 Server");
+    //globalClient = client;
   } else if (type == WS_EVT_DISCONNECT) {
     Serial.println("Client disconnected");
+    globalClient = NULL;
   }
 }
 #endif
@@ -1401,7 +1430,7 @@ void initGPS() {
 }
 
 const char *getStateStr(int what) {
-  if(what<0 || what>=(sizeof(mainStateStr)/sizeof(const char *)))
+  if (what < 0 || what >= (sizeof(mainStateStr) / sizeof(const char *)))
     return "--";
   else
     return mainStateStr[what];
@@ -1421,7 +1450,7 @@ void sx1278Task(void *parameter) {
   while (1) {
     if (rxtask.activate >= 128) {
       // activating sx1278 background task...
-      Serial.printf("RXtask: start DECODER for sonde %d (was %s)\n", rxtask.activate&0x7f, getStateStr(rxtask.mainState));
+      Serial.printf("RXtask: start DECODER for sonde %d (was %s)\n", rxtask.activate & 0x7f, getStateStr(rxtask.mainState));
       rxtask.mainState = ST_DECODER;
       rxtask.currentSonde = rxtask.activate & 0x7F;
       sonde.setup();
@@ -2065,7 +2094,7 @@ void loopDecoder() {
   }
   if (rdzserver.hasClient()) {
     Serial.println("TCP JSON socket: new connection");
-    if (rdzclient) rdzclient.stop();
+    rdzclient.stop();
     rdzclient = rdzserver.available();
   }
   if (rdzclient.available()) {
@@ -2110,13 +2139,20 @@ void loopDecoder() {
         tncclient.write(raw, rawlen);
       }
     }
+#if FEATURE_SONDEHUB
+    if (sonde.config.sondehub.active) {
+      sondehub_send_data(&shclient, s, &sonde.config.sondehub);
+    }
+#endif
 
 
+#if FEATURE_MQTT
     // send to MQTT if enabled
     if (connected && mqttEnabled) {
       Serial.println("Sending sonde info via MQTT");
       mqttclient.publishPacket(s);
     }
+#endif
   }
   // always send data, even if not valid....
   if (rdzclient.connected()) {
@@ -2200,7 +2236,6 @@ void loopDecoder() {
     if (wlen != len) {
       Serial.println("Writing rdzClient not OK, closing connection");
       rdzclient.stop();
-      rdzclient = NULL;
     }
     //Serial.println("Writing rdzclient OK");
   }
@@ -2223,6 +2258,8 @@ void setCurrentDisplay(int value) {
 void loopSpectrum() {
   int marker = 0;
   char buf[10];
+  uint8_t dispw, disph, dispxs, dispys;
+  disp.rdis->getDispSize(&disph, &dispw, &dispxs, &dispys);
 
   switch (getKeyPress()) {
     case KP_SHORT: /* move selection of peak, TODO */
@@ -2251,15 +2288,21 @@ void loopSpectrum() {
   scanner.scan();
   scanner.plotResult();
 
+  /*
+    if(globalClient != NULL && globalClient->status() == WS_CONNECTED){
+        String randomNumber = String(random(0,20));
+        globalClient->text(randomNumber);
+     }
+  */
+
   if (sonde.config.spectrum > 0) {
     int remaining = sonde.config.spectrum - (millis() - specTimer) / 1000;
-    itoa(remaining, buf, 10);
     Serial.printf("config.spectrum:%d  specTimer:%ld millis:%ld remaining:%d\n", sonde.config.spectrum, specTimer, millis(), remaining);
     if (sonde.config.marker != 0) {
       marker = 1;
     }
-    disp.rdis->drawString(0, 1 + marker, buf);
-    disp.rdis->drawString(2, 1 + marker, "Sec.");
+    snprintf(buf, 10, "%d Sec.", remaining);
+    disp.rdis->drawString(0, dispys <= 1 ? (1 + marker) : (dispys + 1)*marker, buf);
     if (remaining <= 0) {
       setCurrentDisplay(0);
       enterMode(ST_DECODER);
@@ -2294,6 +2337,9 @@ String translateEncryptionType(wifi_auth_mode_t encryptionType) {
   }
 }
 
+enum t_wifi_state { WIFI_DISABLED, WIFI_SCAN, WIFI_CONNECT, WIFI_CONNECTED, WIFI_APMODE };
+
+static t_wifi_state wifi_state = WIFI_DISABLED;
 
 void enableNetwork(bool enable) {
   if (enable) {
@@ -2307,23 +2353,23 @@ void enableNetwork(bool enable) {
       tncserver.begin();
       rdzserver.begin();
     }
-
+#if FEATURE_MQTT
     if (sonde.config.mqtt.active && strlen(sonde.config.mqtt.host) > 0) {
       mqttEnabled = true;
       mqttclient.init(sonde.config.mqtt.host, sonde.config.mqtt.port, sonde.config.mqtt.id, sonde.config.mqtt.username, sonde.config.mqtt.password, sonde.config.mqtt.prefix);
     }
-
+#endif
+#if FEATURE_SONDEHUB
+    if (sonde.config.sondehub.active && wifi_state != WIFI_APMODE) {
+      sondehub_station_update(&shclient, &sonde.config.sondehub);
+    }
+#endif
     connected = true;
   } else {
     MDNS.end();
     connected = false;
   }
 }
-
-
-enum t_wifi_state { WIFI_DISABLED, WIFI_SCAN, WIFI_CONNECT, WIFI_CONNECTED, WIFI_APMODE };
-
-static t_wifi_state wifi_state = WIFI_DISABLED;
 
 // Events used only for debug output right now
 void WiFiEvent(WiFiEvent_t event)
@@ -2913,10 +2959,175 @@ void loop() {
     lastDisplay = currentDisplay;
   }
 
+#if FEATURE_MQTT
   int now = millis();
   if (mqttEnabled && (lastMqttUptime == 0 || (lastMqttUptime + 60000 < now) || (lastMqttUptime > now))) {
     mqttclient.publishUptime();
     lastMqttUptime = now;
   }
-
+#endif
 }
+
+#if FEATURE_SONDEHUB
+// Sondehub v2 DB related codes
+/*
+ 	Update station data to the sondehub v2 DB
+*/
+void sondehub_station_update(WiFiClient *client, struct st_sondehub *conf) {
+  char data[300];
+
+  Serial.println("sondehub_station_update()");
+
+  if (!client->connected()) {
+    if (!client->connect(conf->host, 80)) {
+      Serial.println("Connection FAILED");
+      return;
+    }
+  }
+
+  client->println("PUT /listeners HTTP/1.1");
+  client->print("Host: ");
+  client->println(conf->host);
+  client->println("accept: text/plain");
+  client->println("Content-Type: application/json");
+  client->print("Content-Length: ");
+  sprintf(data,
+          "{"
+          "\"software_name\": \"%s\","
+          "\"software_version\": \"%s\","
+          "\"uploader_callsign\": \"%s\","
+          "\"uploader_contact_email\": \"%s\","
+          "\"uploader_position\": [%s,%s,%s],"
+          "\"uploader_antenna\": \"%s\""
+          "}",
+          version_name, version_id, conf->callsign, conf->email, conf->lat, conf->lon, conf->alt, conf->antenna);
+  client->println(strlen(data));
+  client->println();
+  client->println(data);
+  Serial.println(strlen(data));
+  Serial.println(data);
+  String response = client->readString();
+  Serial.println(response);
+  client->stop();
+}
+
+/*
+ 	Update sonde data to the sondehub v2 DB
+*/
+enum SHState { SH_DISCONNECTED, SH_CONNECTING, SH_CONN_IDLE, SH_CONN_WAITACK };
+
+SHState shState = SH_DISCONNECTED;
+
+void sondehub_send_data(WiFiClient *client, SondeInfo *s, struct st_sondehub *conf) {
+  Serial.println("sondehub_send_data()");
+
+#define MSG_SIZE 550
+  char rs_msg[MSG_SIZE];
+  char *w;
+  struct tm ts;
+  time_t t = s->time;
+
+  while (client->available() > 0) {
+    // data is available from remote server, process it...
+    int cnt = client->readBytesUntil('\n', rs_msg, MSG_SIZE);
+    rs_msg[cnt] = 0;
+    Serial.println(rs_msg);
+    // If something that looks like a valid HTTP response is received, we are ready to send the next data item
+    if (shState == SH_CONN_WAITACK && cnt > 11 && strncmp(rs_msg, "HTTP/1", 6) == 0) {
+      shState = SH_CONN_IDLE;
+    }
+  }
+
+  // Check if current sonde data is valid. If not, don't do anything....
+  if (String(s->ser) == "") return;	// Don't send anything without serial number
+  if (((int)s->lat == 0) && ((int)s->lon == 0)) return;	// Sometimes these values are zeroes. Don't send those to the sondehub
+  if ((int)s->alt > 50000) return;	// If alt is too high don't send to SondeHub
+  if ((int)s->sats < 4) return;	// If not enough sats don't send to SondeHub
+
+  // If not connected to sondehub, try reconnecting.
+  // TODO: do this outside of main loop
+  if (!client->connected()) {
+    Serial.println("NO CONNECTION");
+    shState = SH_DISCONNECTED;
+    if (!client->connect(conf->host, 80)) {
+      Serial.println("Connection FAILED");
+      return;
+    }
+    client->Client::setTimeout(0);  // does this work?
+    shState = SH_CONN_IDLE;
+  }
+
+  if ( shState == SH_CONN_WAITACK ) {
+    Serial.println("Previous SH-frame not yet ack'ed, not sending new data");
+    return;
+  }
+
+  if ( s->type == STYPE_RS41 || s->type == STYPE_RS92 || s->type == STYPE_M10 || s->type == STYPE_M20 ) {
+    t += 18;	// convert back to GPS time from UTC time +18s
+  }
+
+  ts = *gmtime(&t);
+
+  memset(rs_msg, 0, MSG_SIZE);
+  w = rs_msg;
+
+  sprintf(w,
+          "[ {"
+          "\"software_name\": \"%s\","
+          "\"software_version\": \"%s\","
+          "\"uploader_callsign\": \"%s\","
+          "\"time_received\": \"%04d-%02d-%02dT%02d:%02d:%02d.000Z\","
+          "\"manufacturer\": \"%s\","
+          "\"type\": \"%s\","
+          "\"serial\": \"%s\","
+          "\"frame\": %d,"
+          "\"datetime\": \"%04d-%02d-%02dT%02d:%02d:%02d.000Z\","
+          "\"lat\": %.6f,"
+          "\"lon\": %.6f,"
+          "\"alt\": %.2f,"
+          "\"frequency\": %.3f,"
+          "\"vel_h\": %.1f,"
+          "\"vel_v\": %.1f,"
+          "\"heading\": %.1f,"
+          "\"sats\": %d,"
+          "\"rssi\": %.1f,",
+          version_name, version_id, conf->callsign,
+          ts.tm_year + 1900, ts.tm_mon + 1, ts.tm_mday, ts.tm_hour, ts.tm_min, ts.tm_sec + s->sec,
+          manufacturer_string[s->type], sondeTypeStr[s->type], s->ser, s->frame,
+          ts.tm_year + 1900, ts.tm_mon + 1, ts.tm_mday, ts.tm_hour, ts.tm_min, ts.tm_sec + s->sec,
+          (float)s->lat, (float)s->lon, (float)s->alt, (float)s->freq, (float)s->hs, (float)s->vs,
+          (float)s->dir, (int)s->sats, -((float)s->rssi / 2)
+         );
+
+  w += strlen(w);
+  if (((int)s->temperature != 0) && ((int)s->relativeHumidity != 0)) {
+    sprintf(w,
+            "\"temp\": %.2f,"
+            "\"humidity\": %.2f,",
+            float(s->temperature), float(s->relativeHumidity)
+           );
+    w += strlen(w);
+  }
+  sprintf(w,
+          "\"uploader_position\": [ %s, %s, %s ],"
+          "\"uploader_antenna\": \"%s\""
+          "}]",
+          conf->lat, conf->lon, conf->alt, conf->antenna
+         );
+
+  client->println("PUT /sondes/telemetry HTTP/1.1");
+  client->print("Host: ");
+  client->println(conf->host);
+  client->println("accept: text/plain");
+  client->println("Content-Type: application/json");
+  client->print("Content-Length: ");
+  client->println(strlen(rs_msg));
+  client->println();
+  client->println(rs_msg);
+  Serial.println(rs_msg);
+  shState = SH_CONN_WAITACK;
+  //String response = client->readString();
+  //Serial.println(response);
+}
+// End of sondehub v2 related codes
+#endif
