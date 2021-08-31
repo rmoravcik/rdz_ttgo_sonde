@@ -29,8 +29,7 @@ Meteomodem | M10 | :heavy_check_mark: | :x: | :x: | Not Sent
 Meteomodem | M20 | :heavy_check_mark: | :x: | :x: | Not Sent
 Meteo-Radiy | MP3-H1 (MRZ-H1) | :heavy_check_mark: | :x: | :x: | :x: 
 
-SondeHub integration has mainly been tested with RS41 and DFM. MP3-H1 currently lacks decoding
-timestamps from telemetry, thus not yet suitable for SondeHub.
+SondeHub integration has mainly been tested with RS41 and DFM. 
 
 
 Support for other radiosondes that use AFSK modulation is not feasible with the TTGO hardware.
@@ -39,6 +38,28 @@ In particular, decoding iMet radiosondes is not practical.
 Adding support for LMS6 (see issue #48) and ims100 (see branch ims100) could be feasible,
 but currently I don't have plans to do add this myself. Well-tested pull requests will of
 course be considered for inclusion :-).
+
+## Installation
+
+You can download the latest binary automated build for the development and testing branches [here](http://rdzsonde.mooo.com/download.html), the binary includes everything including configuration files so any existing settings will be reset. 
+
+To update an existing installatiom to the latest development or master version you can use the [OTA](https://github.com/dl9rdz/rdz_ttgo_sonde/wiki/Other-features#over-the-air-updates) update feature.
+
+The downloaded .bin file can be flashed to your ESP32 board using [esptool](https://github.com/espressif/esptool) or [ESP32 Download Tool](https://www.espressif.com/en/support/download/other-tools)
+
+### esptool
+
+You can run the following command replacing `<filename.bin>` with the path to the downloaded .bin file. 
+
+If you encounter errors with the device COM not automatically being detected replace `/dev/cu.SLAB_USBtoUART` with `COM<X>`.
+
+```
+esptool --chip esp32 --port /dev/cu.SLAB_USBtoUART --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 <filename.bin>
+```
+
+### ESP32 Download Tool
+
+The binary file can also be installed using the GUI application with the [following](http://rdzsonde.mooo.com/) settings.
 
 ## Button commands
 

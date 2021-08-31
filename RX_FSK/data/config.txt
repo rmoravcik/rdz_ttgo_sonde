@@ -17,7 +17,6 @@ button2_axp=1
 # T-BEAM, ILI9225: SDA=4, CLK=21, RS=2, RST=22, CS=0
 # No specification in config file: try autodetection (gpio4 pin level at startup)
 #
-# disptype: 0=OLED, 1=ILI9225
 disptype=1
 oled_sda=4
 oled_scl=13
@@ -25,12 +24,9 @@ oled_rst=14
 tft_rs=2
 tft_cs=0
 tft_orient=2
-tft_modeflip=0
+tft_spifreq=40000000
 gps_rxd=34
 gps_txd=12
-power_pout=-1
-# Show AFC value (for RS41 and M10/M20, maybe also DFM, but not useful for RS92)
-showafc=1
 # Frequency correction, in Hz
 # freqofs=0
 #-------------------------------#
@@ -43,9 +39,9 @@ wifi=3
 # TCP/IP KISS TNC in port 14590 for APRSdroid (0=disabled, 1=enabled)
 kisstnc.active = 1
 
-# which screens file to use (0: screens.txt, i>0: screens${i}.txt
-# 0: old version; 1: for OLED, 2: for TFT; 3: for TFT (portrait mode)
-screenfile=3
+# which screens file to use (0: automated selection based on display type and orientation, i>0: screens${i}.txt
+# predefined: 1: for OLED, 2: for ILI9225; 3: for ILI9225 (portrait mode); 4: for ILI9431; 5: for ILI9431 (portrait mode)
+# screenfile=3
 # display configuration. List of "displays"
 # first entry: "Scanner" display
 # second entry: default "Receiver" display
@@ -126,11 +122,12 @@ mqtt.prefix=rdz_sonde_server/
 #-------------------------------#
 # Sondehub v2 DB settings
 sondehub.active=0
+sondehub.chase=0
 sondehub.host=api.v2.sondehub.org
 sondehub.callsign=CHANGEME_RDZTTGO
-sondehub.lat=null
-sondehub.lon=null
-sondehub.alt=null
+sondehub.lat=
+sondehub.lon=
+sondehub.alt=
 sondehub.antenna=
 sondehub.email=
 #-------------------------------#
