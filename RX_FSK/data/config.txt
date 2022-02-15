@@ -17,12 +17,16 @@ button2_axp=1
 # T-BEAM, ILI9225: SDA=4, CLK=21, RS=2, RST=22, CS=0
 # No specification in config file: try autodetection (gpio4 pin level at startup)
 #
+# disptype: 0=OLED, 1=ILI9225
 disptype=1
 oled_sda=4
 oled_scl=13
 oled_rst=14
 tft_rs=2
 tft_cs=0
+rxlat=
+rxlon=
+rxalt=
 tft_orient=2
 tft_spifreq=40000000
 gps_rxd=34
@@ -75,16 +79,14 @@ rs92.rxbw=12500
 rs92.alt2d=480
 dfm.agcbw=20800
 dfm.rxbw=10400
-m10m20.agcbw=20800
-m10m20.rxbw=12500
 #-------------------------------#
 # ftp server for RINEX data (for RS92)
 # YYYY/DDD/brdcDDD0.YYn.gz is appended
 # s1: igs.bkg.bund.de/IGS/BRDC/
 # s2: www.ngs.noaa.gov/cors/rinex/
 #-------------------------------#
-ephftp=www.ngs.noaa.gov/cors/rinex/
-#ephftp=igs.bkg.bund.de/IGS/BRDC/
+#ephftp=www.ngs.noaa.gov/cors/rinex/
+ephftp=igs.bkg.bund.de/IGS/BRDC/
 #-------------------------------#
 # axudp for sending to aprsmap
 #-------------------------------#
@@ -95,17 +97,19 @@ axudp.host=192.168.42.20
 axudp.port=9002
 axudp.symbol=/O
 axudp.highrate=1
-axudp.idformat=0
 #-------------------------------#
-# maybe some time in the future
+# connect to some aprs server
 #-------------------------------#
-# currently simply not implemented, no need to put anything here anyway
 tcp.active=0
 tcp.host=radiosondy.info
 tcp.port=14590
 tcp.symbol=/O
 tcp.highrate=20
-tcp.idformat=0
+# send beacon (possibly with different call or SSID)
+tcp.chase=0
+tcp.objcall=
+tcp.beaconsym=/`/(
+tcp.comment=
 #-------------------------------#
 # mqtt settings
 #-------------------------------#
@@ -122,21 +126,18 @@ mqtt.prefix=rdz_sonde_server/
 #-------------------------------#
 # Sondehub v2 DB settings
 sondehub.active=0
-sondehub.chase=0
+sondehub.chase=3
 sondehub.host=api.v2.sondehub.org
 sondehub.callsign=CHANGEME_RDZTTGO
-sondehub.lat=
-sondehub.lon=
-sondehub.alt=
 sondehub.antenna=
 sondehub.email=
 #-------------------------------#
-showafc=1
-freqofs=0
-norx_timeout=20
-touch_thresh=70
-mdnsname=rdzsonde
+# Sondehub freq import settings
+#-------------------------------#
+shfimp.active=0
+shfimp.interval=60
+shfimp.maxdist=150
+shfimp.maxage=6
 #-------------------------------#
 # EOF
 #-------------------------------#
-

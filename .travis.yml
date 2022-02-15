@@ -7,9 +7,9 @@ before_install:
   - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_1.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :1 -ac -screen 0 1280x1024x16"
   - sleep 3
   - export DISPLAY=:1.0
-  - wget https://downloads.arduino.cc/arduino-1.8.13-linux64.tar.xz
-  - tar xf arduino-1.8.13-linux64.tar.xz
-  - sudo mv arduino-1.8.13 /usr/local/share/arduino
+  - wget https://downloads.arduino.cc/arduino-1.8.16-linux64.tar.xz
+  - tar xf arduino-1.8.16-linux64.tar.xz
+  - sudo mv arduino-1.8.16 /usr/local/share/arduino
   - sudo ln -s /usr/local/share/arduino/arduino /usr/local/bin/arduino
   - wget https://github.com/me-no-dev/ESPAsyncWebServer/archive/master.zip
   - unzip master.zip
@@ -40,20 +40,24 @@ before_install:
   - sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 install:
-  - arduino --pref "boardsmanager.additional.urls=https://dl.espressif.com/dl/package_esp32_index.json" --save-prefs
+  - arduino --pref "boardsmanager.additional.urls=https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json" --save-prefs
   - arduino --pref "build.verbose=true" --save-prefs
   - arduino --pref "custom_FlashFreq=ttgo-lora32-v1_80" --save-prefs
   - mkdir -p $PWD/build
   - arduino --pref "build.path=$PWD/build" --save-prefs
   - arduino --install-boards esp32:esp32:1.0.6 --save-prefs
   - ln -s $PWD/libraries/SondeLib /usr/local/share/arduino/libraries/SondeLib
-  - arduino --install-library "U8g2"
+  - arduino --install-library "U8g2:2.29.11"
   - arduino --install-library "MicroNMEA"
   - arduino --install-library "GFX Library for Arduino"
 script:
   - arduino --board esp32:esp32:t-beam --verify $PWD/RX_FSK/RX_FSK.ino
-  - find build
-  - find /home/travis/.arduino15/packages/esp32/hardware/esp32/
+  - ESPPATH=`arduino --get-pref runtime.tools.xtensa-esp32-elf-gcc.path`
+  - $ESPPATH/bin/xtensa-esp32-elf-c++ -c RX_FSK/src/fonts/fonts.cpp -o /tmp/fonts.o
+  - $ESPPATH/bin/xtensa-esp32-elf-ld -T fontlink.ld --oformat=binary -o /tmp/fonts.bin /tmp/fonts.o
+  - ls -la /tmp/fonts.bin
+  #- find build
+  #- find /home/travis/.arduino15/packages/esp32/hardware/esp32/
   - $PWD/scripts/makeimage.py $ESP32TOOLS $PWD/build/RX_FSK.ino.bin $PWD/RX_FSK/data $PWD/out.bin
 after_success:
   - .travis/push.sh  
