@@ -2,10 +2,10 @@
 #include <U8x8lib.h>
 #include <U8g2lib.h>
 #include <SPIFFS.h>
-#include <axp20x.h>
 #include <MicroNMEA.h>
 #include "Display.h"
 #include "Sonde.h"
+#include "pmu.h"
 
 int readLine(Stream &stream, char *buffer, int maxlen);
 
@@ -22,8 +22,7 @@ extern const char *version_id;
 
 extern Sonde sonde;
 
-extern AXP20X_Class axp;
-extern bool axp192_found;
+extern PMU *pmu;
 extern SemaphoreHandle_t axpSemaphore;
 
 extern xSemaphoreHandle globalLock;
@@ -32,8 +31,6 @@ extern xSemaphoreHandle globalLock;
   {                      \
   } while (xSemaphoreTake(globalLock, portMAX_DELAY) != pdPASS)
 #define SPI_MUTEX_UNLOCK() xSemaphoreGive(globalLock)
-
-struct GpsPos gpsPos;
 
 //SPIClass spiDisp(HSPI);
 
@@ -318,7 +315,7 @@ void U8x8Display::drawString(uint16_t x, uint16_t y, const char *s, int16_t widt
 	}
 	if(width<0) {
 		int l = strlen(buf);
-		memset(buf, ' ', width-l);
+		memset(buf, ' ', -width-l);
 		utf2latin15(s, buf+l, 50-l);
 	}
 	u8x8->drawString(x, y, buf);
@@ -1556,12 +1553,12 @@ void Display::drawGPS(DispEntry *de) {
 		// equirectangular approximation is good enough
 		if( !VALIDPOS(sonde.si()->d.validPos) ) {
 			snprintf(buf, 16, "no pos ");
-			if(de->extra && *de->extra=='5') buf[5]=0;
+			if( de->extra[1]=='5') buf[5]=0;
 		} else if( disp.gpsDist < 0 ) {
 			snprintf(buf, 16, "no gps ");
-			if(de->extra && *de->extra=='5') buf[5]=0;
+			if( de->extra[1]=='5') buf[5]=0;
 		} else {
-			if(de->extra && *de->extra=='5') { // 5-character version: ****m / ***km / **e6m
+			if( de->extra[1]=='5') { // 5-character version: ****m / ***km / **e6m
 				if(disp.gpsDist>999999) snprintf(buf, 16, "%de6m  ", (int)(disp.gpsDist/1000000));
 				if(disp.gpsDist>9999) snprintf(buf, 16, "%dkm   ", (int)(disp.gpsDist/1000));
 				else snprintf(buf, 16, "%dm    ", (int)disp.gpsDist);
@@ -1672,13 +1669,14 @@ void Display::drawGPS(DispEntry *de) {
 void Display::drawBatt(DispEntry *de) {
 	float val;
 	char buf[30];
-	if (!axp192_found) {
+	if (!pmu) {
 		if (sonde.config.batt_adc<0) return;
 		switch (de->extra[0])
 		{
 		case 'V':
 				val = (float)(analogRead(sonde.config.batt_adc)) / 4095 * 2 * 3.3 * 1.1;
 				snprintf(buf, 30, "%.2f%s", val, de->extra + 1);
+				Serial.printf("Batt: %s", buf);
 			break;
 		default:
 			*buf = 0;
@@ -1686,51 +1684,67 @@ void Display::drawBatt(DispEntry *de) {
 		rdis->setFont(de->fmt);
 		drawString(de, buf);
 	} else {
+        *buf = 0;
 	xSemaphoreTake( axpSemaphore, portMAX_DELAY );
 	switch(de->extra[0]) {
 	case 'S':
-		if(!axp.isBatteryConnect()) { 
-			if(axp.isVBUSPlug()) { strcpy(buf, "U"); }
+		if(!pmu->isBatteryConnected()) { 
+			if(pmu->isVbusIn()) { strcpy(buf, "U"); }
 			else { strcpy(buf, "N"); } // no battary
 		}
-		else if (axp.isChargeing()) { strcpy(buf, "C"); } // charging
+		else if (pmu->isCharging()) { strcpy(buf, "C"); } // charging
 		else { strcpy(buf, "B"); }  // battery, but not charging
+                Serial.printf("Battery: %s\n", buf);
 		break;
 	case 'V':
-		val = axp.getBattVoltage();
+		val = pmu->getBattVoltage();
 		snprintf(buf, 30, "%.2f%s", val/1000, de->extra+1);
+	        Serial.printf("Vbatt: %s\n", buf);
 		break;
-	case 'C':
-		val = axp.getBattChargeCurrent();
+        }
+        if(pmu->type==TYPE_AXP192) {
+            switch(de->extra[0]) {
+	    case 'C':
+		val = pmu->getBattChargeCurrent();
 		snprintf(buf, 30, "%.2f%s", val, de->extra+1);
+	        Serial.printf("Icharge: %s\n", buf);
 		break;
-	case 'D':
-		val = axp.getBattDischargeCurrent();
+	    case 'D':
+		val = pmu->getBattDischargeCurrent();
 		snprintf(buf, 30, "%.2f%s", val, de->extra+1);
+	        Serial.printf("Idischarge: %s\n", buf);
 		break;
-	case 'U':
+	    case 'U':
 		if(sonde.config.type == TYPE_M5_CORE2) {
-		  val = axp.getAcinVoltage();
+		  val = pmu->getAcinVoltage();
 		} else {
-		  val = axp.getVbusVoltage();
+		  val = pmu->getVbusVoltage();
 		}
 		snprintf(buf, 30, "%.2f%s", val/1000, de->extra+1);
+	        Serial.printf("Vbus: %s\n", buf);
 		break;
-	case 'I':
+	    case 'I':
 		if(sonde.config.type == TYPE_M5_CORE2) {
-		  val = axp.getAcinCurrent();
+		  val = pmu->getAcinCurrent();
 		} else {
-		  val = axp.getVbusCurrent();
+		  val = pmu->getVbusCurrent();
 		}
 		snprintf(buf, 30, "%.2f%s", val, de->extra+1);
+	        Serial.printf("Ibus: %s\n", buf);
 		break;
-	case 'T':
-		val = axp.getTemp();  // fixed in newer versions of libraray: -144.7 no longer needed here!
+	    case 'T':
+		val = pmu->getTemperature();
 		snprintf(buf, 30, "%.2f%s", val, de->extra+1);
+                Serial.printf("temp: %s\n", buf);
 		break;
-	default:
-		*buf=0;
-	}
+	    }   
+        } else if (pmu->type == TYPE_AXP2101) {
+            *buf = 0;
+            if(de->extra[0]=='T') {
+                val = pmu->getTemperature();
+                snprintf(buf, 30, "%.2f%s", val, de->extra+1);
+            }
+        }
 	xSemaphoreGive( axpSemaphore );
         rdis->setFont(de->fmt);
 	drawString(de, buf);
