@@ -30,6 +30,7 @@ uint8_t pmu_irq = 0;
 #define AXP192_DC1OUT_VOL                       (0x26)
 #define AXP192_DC3OUT_VOL                       (0x27)
 #define AXP192_LDO23OUT_VOL                     (0x28)
+#define AXP192_VOFF_SET                         (0x31)
 #define AXP192_GPIO0_VOL                        (0x91)
 
 // Power enable registers
@@ -361,6 +362,19 @@ float AXP192PMU::getTemperature() {
     return readRegisters_8_4(AXP192_INTERNAL_TEMP_H8, AXP192_INTERNAL_TEMP_L4) * AXP192_INTERNAL_TEMP_STEP - 144.7;
 }
 
+void AXP192PMU::shutdown() {
+    uint8_t val = readRegister(AXP192_VOFF_SET);
+    writeRegister(AXP192_VOFF_SET, val | (1 << 3));
+
+    enableLDO2(false);
+    enableLDO3(false);
+    enableDC1(false);
+    enableDC2(false);
+    enableEXTEN(false);
+    delay(1000);
+    enableDC3(false);
+}
+
 //////////////////////////////////////////////////////////////////
 
 /////// Functions for AXP2101
@@ -489,4 +503,5 @@ float AXP2101PMU::getVbusVoltage() { return -1; }
 float AXP2101PMU::getVbusCurrent() { return -1; }
 float AXP2101PMU::getTemperature() { return -1; }
 
+void AXP2101PMU::shutdown() { }
 

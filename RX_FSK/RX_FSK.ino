@@ -2880,45 +2880,9 @@ int fetchHTTPheader(int *validType) {
 }
 
 void enterSleepMode() {
-    if (axp192_found) {
-        int ret;
-        // PEK or GPIO edge wake-up function enable setting in Sleep mode
-        do {
-            // In order to ensure that it is set correctly,
-            // the loop waits for it to return the correct return value
-            Serial.println("Set PMU in sleep mode");
-            ret = axp.setSleep();
-            delay(500);
-        } while (ret != AXP_PASS);
-
-        // Turn off all power channels, only use PEK or AXP GPIO to wake up
-
-        // After setting AXP202/AXP192 to sleep,
-        // it will start to record the status of the power channel that was turned off after setting,
-        // it will restore the previously set state after PEK button or GPIO wake up
-
-        // Turn off all AXP192 power channels
-        ret = axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF);
-        Serial.printf("Set Power AXP192_LDO2:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
-
-        ret = axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF);
-        Serial.printf("Set Power AXP192_LDO3:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
-
-        ret = axp.setPowerOutPut(AXP192_DCDC1, AXP202_OFF);
-        Serial.printf("Set Power AXP192_DCDC1:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
-
-        ret = axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF);
-        Serial.printf("Set Power AXP192_DCDC2:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
-
-        ret = axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
-        Serial.printf("Set Power AXP192_EXTEN:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
-
-        Serial.flush();
-        delay(1000);
-
-        // Tbeam v1.0 uses DC3 as the MCU power channel, turning it off as the last
-        ret = axp.setPowerOutPut(AXP192_DCDC3, AXP202_OFF);
-        Serial.printf("Set Power AXP192_DCDC3:%s\n", ret == AXP_PASS ? "OK" : "FAIL");
+    if (axp_found) {
+        Serial.printf("Entering shutdown\n");
+        pmu->shutdown();
     }
 }
 
