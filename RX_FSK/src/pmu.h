@@ -41,6 +41,8 @@ public:
     virtual float getVbusVoltage();
     virtual float getVbusCurrent();
     virtual float getTemperature();
+
+    virtual void shutdown();
 };
 
 /* Interface */
@@ -63,6 +65,8 @@ public:
     float getVbusVoltage();
     float getVbusCurrent();
     float getTemperature();
+
+    void shutdown();
 
 protected:
     void _enableIRQ(uint8_t addr, uint8_t mask);
@@ -103,6 +107,8 @@ public:
     float getVbusVoltage();
     float getVbusCurrent();
     float getTemperature();
+
+    void shutdown();
 
 protected:
     void _enableIRQ(uint8_t addr, uint8_t mask);

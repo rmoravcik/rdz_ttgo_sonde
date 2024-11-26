@@ -5,9 +5,9 @@
 #button_pin=130
 #button2_pin=142
 # No specification in config file: try autodetection (gpio4 pin level at startup)
-#button_pin=0
-#button2_pin=255
-#button2_axp=0
+button_pin=38
+button2_pin=143
+button2_axp=1
 # LED port
 #led_pout=-1
 # OLED Setup is depending on hardware of LoRa board
@@ -18,20 +18,20 @@
 # No specification in config file: try autodetection (gpio4 pin level at startup)
 #
 # disptype: 0=OLED, 1=ILI9225
-#disptype=0
-#oled_sda=21
-#oled_scl=22
-#oled_rst=16
-#tft_rs=2
-#tft_cs=0
+disptype=1
+oled_sda=4
+oled_scl=13
+oled_rst=14
+tft_rs=2
+tft_cs=0
 rxlat=
 rxlon=
 rxalt=
 b2mute=360
-tft_orient=1
-#tft_spifreq=40000000
-#gps_rxd=-1
-#gps_txd=-1
+tft_orient=2
+tft_spifreq=20000000
+gps_rxd=34
+gps_txd=12
 # Frequency correction, in Hz
 # freqofs=0
 #-------------------------------#
@@ -47,7 +47,7 @@ kisstnc.active = 1
 
 # which screens file to use (0: automated selection based on display type and orientation, i>0: screens${i}.txt
 # predefined: 1: for OLED, 2: for ILI9225; 3: for ILI9225 (portrait mode); 4: for ILI9431; 5: for ILI9431 (portrait mode)
-# screenfile=2
+# screenfile=3
 # display configuration. List of "displays"
 # first entry: "Scanner" display
 # second entry: default "Receiver" display
@@ -70,7 +70,7 @@ marker=1
 #-------------------------------#
 # APRS settings
 #-------------------------------#
-call=N0CALL
+call=OK8RM
 passcode=12345
 #-------------------------------#
 # Sonde specific settings: bandwidth

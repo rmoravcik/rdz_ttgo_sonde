@@ -27,7 +27,7 @@
  * Also, it is easier to use different fonts :) just flash the font partition w/ something else...
  * This option will likely be removed post-master1.0
  */
-#define LEGACY_FONTS_IN_CODEBIN 0
+#define LEGACY_FONTS_IN_CODEBIN 1
 
 
 #else

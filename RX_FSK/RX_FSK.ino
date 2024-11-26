@@ -81,7 +81,7 @@ NULL };
 //#define ESP_MEM_DEBUG 1
 //int e;
 
-enum MainState { ST_DECODER, ST_SPECTRUM, ST_WIFISCAN, ST_UPDATE, ST_TOUCHCALIB };
+enum MainState { ST_DECODER, ST_SPECTRUM, ST_WIFISCAN, ST_UPDATE, ST_TOUCHCALIB, ST_SLEEPMODE };
 static MainState mainState = ST_WIFISCAN; // ST_WIFISCAN;
 const char *mainStateStr[5] = {"DECODER", "SPECTRUM", "WIFISCAN", "UPDATE", "TOUCHCALIB" };
 
@@ -2108,6 +2108,7 @@ static const char *action2text(uint8_t action) {
   if (action == ACT_DISPLAY_WIFI) return "Wifi Scan Display";
   if (action == ACT_NEXTSONDE) return "Go to next sonde";
   if (action == ACT_PREVSONDE) return "presonde (not implemented)";
+  if (action == ACT_SLEEP_MODE) return "Entering sleep mode";
   if (action == ACT_NONE) return "none";
   if (action >= 128) {
     snprintf(text, 40, "Sonde=%d", action & 127);
@@ -2151,6 +2152,10 @@ void loopDecoder() {
       }
       else if (action == ACT_DISPLAY_WIFI) {
         enterMode(ST_WIFISCAN);
+        return;
+      }
+      else if (action == ACT_SLEEP_MODE) {
+        enterMode(ST_SLEEPMODE);
         return;
       }
     }
@@ -2306,6 +2311,13 @@ void loopSpectrum() {
     case KP_DOUBLE:
       setCurrentDisplay(0);
       enterMode(ST_DECODER);
+      return;
+    default: break;
+  }
+
+  switch (getKey2Press()) {
+    case KP_MID:
+      enterMode(ST_SLEEPMODE);
       return;
     default: break;
   }
@@ -3031,6 +3043,12 @@ int fetchHTTPheader(int *validType) {
   return contentLength;
 }
 
+void enterSleepMode() {
+    if (axp_found) {
+        Serial.printf("Entering shutdown\n");
+        pmu->shutdown();
+    }
+}
 
 
 void loop() {
@@ -3052,6 +3070,7 @@ void loop() {
     case ST_WIFISCAN: loopWifiScan(); break;
     case ST_UPDATE: execOTA(); break;
     case ST_TOUCHCALIB: loopTouchCalib(); break;
+    case ST_SLEEPMODE: enterSleepMode(); break;
   }
 #if 0
   int rssi = sx1278.getRSSI();
